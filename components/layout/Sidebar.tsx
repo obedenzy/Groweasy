@@ -112,7 +112,7 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
 
   return (
     <div className={cn(
-      "flex h-full flex-col bg-slate-900 text-white",
+      "hidden md:flex h-full flex-col bg-slate-900 text-white transition-all duration-300",
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Header */}

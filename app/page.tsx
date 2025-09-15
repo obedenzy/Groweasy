@@ -33,13 +33,13 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b">
+      <header className="flex flex-col md:flex-row items-center justify-between p-4 border-b space-y-4 md:space-y-0">
         <div className="text-2xl font-bold">Grow Easy</div>
-        <nav className="flex items-center space-x-4">
+        <nav className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
           <Link href="#features" className="text-gray-600 hover:text-gray-900">Features</Link>
           <Link href="#pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link>
           <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">Sign In</Link>
-          <Button asChild>
+          <Button asChild className="w-full md:w-auto">
             <Link href="/auth/register">Get Started Free</Link>
           </Button>
         </nav>
@@ -47,18 +47,18 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <main className="flex-1">
-        <section className="text-center py-20 bg-gray-50">
-          <h1 className="text-5xl font-bold mb-4">The Future of Review Management is Here</h1>
-          <p className="text-xl text-gray-600 mb-8">Harness the power of AI to automate review collection, analysis, and response.</p>
+        <section className="text-center py-16 md:py-20 bg-gray-50 px-4">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">The Future of Review Management is Here</h1>
+          <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">Harness the power of AI to automate review collection, analysis, and response.</p>
           <Button size="lg" asChild>
             <Link href="/auth/register">Start Your Free Trial</Link>
           </Button>
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 px-4">
-          <h2 className="text-4xl font-bold text-center mb-12">Why You'll Love Grow Easy</h2>
-          <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8">
+        <section id="features" className="py-16 md:py-20 px-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Why You'll Love Grow Easy</h2>
+          <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-12">
             {/* Feature 1 */}
             <div className="text-center">
               <h3 className="text-2xl font-semibold mb-2">AI-Powered Responses</h3>

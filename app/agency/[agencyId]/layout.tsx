@@ -12,25 +12,25 @@ export default async function AgencyLayout({
 }) {
   const user = await getCurrentUser();
   
-  // The middleware is already handling the redirect for unauthenticated users,
-  // so the check here is primarily for type-safety and access control.
   if (!user) {
-    // The middleware should have already redirected, but as a fallback.
     return notFound();
   }
 
-  // Verify user has access to this agency
   const hasAccess = await hasAgencyAccess(params.agencyId);
   if (!hasAccess) {
     return notFound();
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar userRole={user.role} agencyId={params.agencyId} />
-      <div className="flex-1 flex flex-col">
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-muted/40 md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <Sidebar userRole={user.role} agencyId={params.agencyId} />
+        </div>
+      </div>
+      <div className="flex flex-col">
         <TopNav />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </main>
       </div>

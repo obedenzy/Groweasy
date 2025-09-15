@@ -117,15 +117,17 @@ export default async function AgencyDashboardPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Agency Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {user?.name}. Here's your agency overview.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Agency Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {user?.name}. Here's your agency overview.
+          </p>
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -147,7 +149,7 @@ export default async function AgencyDashboardPage({
       </div>
 
       {/* Recent Activity */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Recent Subaccounts</CardTitle>
