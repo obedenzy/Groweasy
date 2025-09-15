@@ -1,250 +1,153 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Star, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+
+const registrationSchema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string(),
+  businessName: z.string().min(1, "Business name is required"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type RegistrationFormValues = z.infer<typeof registrationSchema>;
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'subaccount_admin',
-    businessName: '',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegistrationFormValues>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      businessName: '',
+    },
+  });
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
+  const onSubmit: SubmitHandler<RegistrationFormValues> = async (data) => {
     setIsLoading(true);
-
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          fullName: data.fullName,
+          email: data.email,
+          password: data.password,
+          subaccountName: data.businessName,
+        }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (!response.ok) {
-        toast.error(data.error || 'Registration failed');
-        return;
+      if (response.ok) {
+        toast.success('Account created successfully! Redirecting to login...');
+        router.push('/auth/login');
+      } else {
+        toast.error(result.error || 'Registration failed');
       }
-
-      toast.success(data.message || 'Registration successful! You can now sign in with your credentials.');
-      router.push('/auth/login');
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error('Registration failed. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Background with text overlay */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 relative overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="w-full h-full" style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px'
-          }}></div>
-        </div>
-        
-        {/* Content overlay */}
-        <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <div className="flex items-center space-x-3 mb-8">
-            <div className="h-12 w-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-              <Star className="h-7 w-7 text-white" />
-            </div>
-            <span className="text-3xl font-bold">Grow Easy</span>
-          </div>
-          
-          <h1 className="text-4xl font-bold mb-6 leading-tight">
-            Start Your Reputation Journey
-          </h1>
-          
-          <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-            Create your account and join thousands of businesses transforming their online reputation with smart review management and AI-powered insights.
-          </p>
-          
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="h-2 w-2 bg-blue-200 rounded-full"></div>
-              <span className="text-blue-100">Free 14-day trial included</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="h-2 w-2 bg-blue-200 rounded-full"></div>
-              <span className="text-blue-100">No credit card required</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="h-2 w-2 bg-blue-200 rounded-full"></div>
-              <span className="text-blue-100">Setup takes less than 5 minutes</span>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="grid grid-cols-1 md:grid-cols-2 h-screen">
+        <div className="hidden md:flex items-center justify-center bg-gray-100">
+          <div className="p-8 text-center">
+            <img src="/placeholder.svg" alt="Review Management" className="w-3/4 mx-auto mb-8"/>
+            <h1 className="text-4xl font-bold text-gray-800 mb-4">Welcome to Grow Easy</h1>
+            <p className="text-gray-600">
+              The all-in-one platform for managing your business reviews with the power of AI.
+            </p>
           </div>
         </div>
-      </div>
-
-      {/* Right side - Registration form */}
-      <div className="flex-1 lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-        <div className="w-full max-w-md">
-          {/* Back to home link */}
-          <div className="mb-8">
-            <Link href="/" className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 text-sm">
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Home</span>
-            </Link>
-          </div>
-
-          <Card className="border-0 shadow-xl bg-white">
+        <div className="flex items-center justify-center p-8">
+          <Card className="w-full max-w-md shadow-lg">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-900">Create Account</CardTitle>
-              <CardDescription className="text-gray-600">
-                Get started with your reputation management journey
-              </CardDescription>
+              <CardTitle className="text-2xl">Create an Account</CardTitle>
+              <CardDescription>Start your journey with us today</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label>Full Name</Label>
                   <Input
-                    id="name"
-                    type="text"
+                    {...register("fullName")}
                     placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    required
                     className="h-11"
                   />
+                  {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName.message}</p>}
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label>Email</Label>
                   <Input
-                    id="email"
+                    {...register("email")}
                     type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    required
+                    placeholder="Enter your email address"
                     className="h-11"
                   />
+                  {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Account Type</Label>
-                  <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select account type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="subaccount_admin">Business Owner</SelectItem>
-                      <SelectItem value="agency_admin">Agency Administrator</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">
-                    {formData.role === 'agency_admin' ? 'Agency Name' : 'Business Name'}
-                  </Label>
+                  <Label>Password</Label>
                   <Input
-                    id="businessName"
-                    type="text"
-                    placeholder={formData.role === 'agency_admin' ? 'Enter your agency name' : 'Enter your business name'}
-                    value={formData.businessName}
-                    onChange={(e) => handleInputChange('businessName', e.target.value)}
-                    required
+                    {...register("password")}
+                    type="password"
+                    placeholder="Create a strong password"
                     className="h-11"
                   />
+                  {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Create a password"
-                      value={formData.password}
-                      onChange={(e) => handleInputChange('password', e.target.value)}
-                      required
-                      className="h-11 pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
-                      )}
-                    </Button>
-                  </div>
+                  <Label>Confirm Password</Label>
+                  <Input
+                    {...register("confirmPassword")}
+                    type="password"
+                    placeholder="Confirm your password"
+                    className="h-11"
+                  />
+                  {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirm your password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                      required
-                      className="h-11 pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
-                      )}
-                    </Button>
-                  </div>
+                  <Label>Business Name</Label>
+                  <Input
+                    {...register("businessName")}
+                    placeholder="Enter your business name"
+                    className="h-11"
+                  />
+                  {errors.businessName && <p className="text-red-500 text-sm">{errors.businessName.message}</p>}
                 </div>
 
                 <Button

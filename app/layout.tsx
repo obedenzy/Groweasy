@@ -1,19 +1,18 @@
 import './globals.css';
-import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Providers } from './providers';
+import { Providers } from '@/app/providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'Grow Easy - AI-Powered Review Management',
-  description: 'Manage your business reputation with AI-powered review management system',
+export const metadata = {
+  title: 'Grow Easy',
+  description: 'AI-Powered Review Management for Your Business',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
+}: { 
+  children: React.ReactNode 
 }) {
   return (
     <html lang="en">

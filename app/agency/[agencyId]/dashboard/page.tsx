@@ -196,7 +196,7 @@ export default async function AgencyDashboardPage({
                 <p className="text-sm text-muted-foreground">Add a new user to your agency</p>
               </div>
               <div className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
-                <p className="font-medium">View Analytics</p>
+                <p className>View Analytics</p>
                 <p className="text-sm text-muted-foreground">Review performance across all clients</p>
               </div>
             </div>

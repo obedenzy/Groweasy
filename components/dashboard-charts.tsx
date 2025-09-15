@@ -16,7 +16,7 @@ interface DashboardChartsProps {
   reviews: Review[];
 }
 
-export function DashboardCharts({ reviews }: DashboardChartsProps) {
+export function DashboardCharts({ reviews = [] }: DashboardChartsProps) {
   // Rating distribution data for pie chart
   const ratingDistribution = [
     { name: '5 Stars', value: reviews.filter(r => r.rating === 5).length, color: '#10b981' },

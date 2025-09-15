@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getCurrentUser, hasAgencyAccess } from '@/lib/session';
 import Sidebar from '@/components/layout/Sidebar';
 import TopNav from '@/components/layout/TopNav';
@@ -12,14 +12,17 @@ export default async function AgencyLayout({
 }) {
   const user = await getCurrentUser();
   
+  // The middleware is already handling the redirect for unauthenticated users,
+  // so the check here is primarily for type-safety and access control.
   if (!user) {
-    redirect('/auth/login');
+    // The middleware should have already redirected, but as a fallback.
+    return notFound();
   }
 
   // Verify user has access to this agency
   const hasAccess = await hasAgencyAccess(params.agencyId);
   if (!hasAccess) {
-    notFound();
+    return notFound();
   }
 
   return (

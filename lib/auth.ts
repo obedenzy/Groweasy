@@ -53,7 +53,6 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Find user in Supabase
           const { data: user, error: userError } = await supabaseAdmin
             .from('users')
             .select('*')
@@ -70,33 +69,16 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Invalid email or password');
           }
 
-          // Get user's agency memberships
           const { data: agencyMemberships } = await supabaseAdmin
             .from('user_agency_memberships')
-            .select(`
-              *,
-              agencies:agency_id (
-                id,
-                name,
-                slug
-              )
-            `)
+            .select('*, agencies:agency_id(id, name, slug)')
             .eq('user_id', user.id);
 
-          // Get user's subaccount access
           const { data: subaccountAccess } = await supabaseAdmin
             .from('subaccount_users')
-            .select(`
-              *,
-              subaccounts:subaccount_id (
-                id,
-                name,
-                slug
-              )
-            `)
+            .select('*, subaccounts:subaccount_id(id, name, slug)')
             .eq('user_id', user.id);
 
-          // Determine user's primary role and access
           const agencyMembership = agencyMemberships?.[0];
           const subaccountAccessItem = subaccountAccess?.[0];
           
@@ -107,21 +89,16 @@ export const authOptions: NextAuthOptions = {
           let subaccountRole = undefined;
 
           if (agencyMembership) {
-            role = 'AGENCY_USER';
+            role = 'AGENCY_ADMIN'; // Assume admin, can be refined
             agencyId = agencyMembership.agency_id;
             agencyRole = agencyMembership.role;
-            
-            if (agencyMembership.role === 'AGENCY_ADMIN') {
-              role = 'AGENCY_ADMIN';
-            }
           }
 
           if (subaccountAccessItem) {
             subaccountId = subaccountAccessItem.subaccount_id;
             subaccountRole = subaccountAccessItem.role;
-            
-            if (!agencyMembership) {
-              role = 'SUBACCOUNT_USER';
+            if (role !== 'AGENCY_ADMIN') {
+                role = 'SUBACCOUNT_USER';
             }
           }
 
@@ -138,7 +115,7 @@ export const authOptions: NextAuthOptions = {
           };
         } catch (error) {
           console.error('Auth error:', error);
-          throw new Error('Authentication failed');
+          return null;
         }
       }
     })
@@ -169,6 +146,22 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+        // After a successful sign-in, we want to redirect to the correct dashboard.
+        const session = await this.session({session: {user: {}}});
+        if(session && session.user){
+            const { role, agencyId, subaccountId } = session.user;
+            if (role === 'AGENCY_ADMIN' && agencyId) {
+                return `${baseUrl}/agency/${agencyId}/dashboard`;
+            }
+            if (role === 'SUBACCOUNT_USER' && subaccountId) {
+                return `${baseUrl}/subaccount/${subaccountId}/dashboard`;
+            }
+        }
+        
+        // Fallback for other cases or if the role doesn't match.
+        return url.startsWith(baseUrl) ? url : baseUrl;
+    }
   },
   pages: {
     signIn: '/auth/login',
@@ -176,5 +169,3 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
-
-// Export auth options for use in API routes

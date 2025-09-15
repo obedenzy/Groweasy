@@ -31,7 +31,7 @@ export default async function SubaccountReviewsPage({
   // Fetch real reviews from database
   const { data: subaccount, error: subaccountError } = await supabaseAdmin
     .from('subaccounts')
-    .select('id, name')
+    .select('id, name, reviews (*)')
     .eq('id', params.subaccountId)
     .single();
 
@@ -39,13 +39,9 @@ export default async function SubaccountReviewsPage({
     notFound();
   }
 
-  const { data: reviews, error: reviewsError } = await supabaseAdmin
-    .from('reviews')
-    .select('*')
-    .eq('subaccount_id', params.subaccountId)
-    .order('created_at', { ascending: false });
+  const subaccountWithReviews = { ...subaccount, reviews: subaccount.reviews || [] };
 
-  const reviewList = reviews || [];
+  const reviewList = subaccountWithReviews.reviews || [];
 
   const reviewsData = reviewList.map(review => ({
     id: review.id,
@@ -86,7 +82,7 @@ export default async function SubaccountReviewsPage({
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Reviews</h1>
@@ -131,7 +127,7 @@ export default async function SubaccountReviewsPage({
             <MessageSquare className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reviews.filter(r => r.rating >= 4).length}</div>
+            <div className="text-2xl font-bold">{subaccountWithReviews.reviews.filter(r => r.rating >= 4).length}</div>
             <p className="text-xs text-muted-foreground">
               4+ star ratings
             </p>
@@ -144,7 +140,7 @@ export default async function SubaccountReviewsPage({
             <MessageSquare className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reviews.length}</div>
+            <div className="text-2xl font-bold">{subaccountWithReviews.reviews.length}</div>
             <p className="text-xs text-muted-foreground">
               Recent feedback
             </p>
@@ -168,12 +164,12 @@ export default async function SubaccountReviewsPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {reviews.map((review) => (
+                {subaccountWithReviews.reviews.map((review) => (
                   <div key={review.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className="font-medium">{review.customerName}</span>
+                          <span className="font-medium">{review.customer_name}</span>
                           <div className="flex">
                             {Array.from({ length: 5 }).map((_, i) => (
                               <Star
@@ -186,8 +182,8 @@ export default async function SubaccountReviewsPage({
                               />
                             ))}
                           </div>
-                          <Badge className={getSourceColor(review.source)}>
-                            {review.source}
+                          <Badge className={getSourceColor('Customer Form')}>
+                            Customer Form
                           </Badge>
                         </div>
                         
@@ -211,7 +207,7 @@ export default async function SubaccountReviewsPage({
                       <div className="flex items-center space-x-2">
                         <div className="text-right text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3 inline mr-1" />
-                          {review.date}
+                          {new Date(review.created_at).toISOString().split('T')[0]}
                         </div>
                       </div>
                     </div>
@@ -238,60 +234,60 @@ export default async function SubaccountReviewsPage({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>5 Stars</span>
-                    <span>{reviews.filter(r => r.rating === 5).length} reviews</span>
+                    <span>{subaccountWithReviews.reviews.filter(r => r.rating === 5).length} reviews</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-green-500 h-2 rounded-full" 
-                      style={{ width: `${reviews.length > 0 ? (reviews.filter(r => r.rating === 5).length / reviews.length) * 100 : 0}%` }}
+                      style={{ width: `${subaccountWithReviews.reviews.length > 0 ? (subaccountWithReviews.reviews.filter(r => r.rating === 5).length / subaccountWithReviews.reviews.length) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>4 Stars</span>
-                    <span>{reviews.filter(r => r.rating === 4).length} reviews</span>
+                    <span>{subaccountWithReviews.reviews.filter(r => r.rating === 4).length} reviews</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-blue-500 h-2 rounded-full" 
-                      style={{ width: `${reviews.length > 0 ? (reviews.filter(r => r.rating === 4).length / reviews.length) * 100 : 0}%` }}
+                      style={{ width: `${subaccountWithReviews.reviews.length > 0 ? (subaccountWithReviews.reviews.filter(r => r.rating === 4).length / subaccountWithReviews.reviews.length) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>3 Stars</span>
-                    <span>{reviews.filter(r => r.rating === 3).length} reviews</span>
+                    <span>{subaccountWithReviews.reviews.filter(r => r.rating === 3).length} reviews</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-yellow-500 h-2 rounded-full" 
-                      style={{ width: `${reviews.length > 0 ? (reviews.filter(r => r.rating === 3).length / reviews.length) * 100 : 0}%` }}
+                      style={{ width: `${subaccountWithReviews.reviews.length > 0 ? (subaccountWithReviews.reviews.filter(r => r.rating === 3).length / subaccountWithReviews.reviews.length) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>2 Stars</span>
-                    <span>{reviews.filter(r => r.rating === 2).length} reviews</span>
+                    <span>{subaccountWithReviews.reviews.filter(r => r.rating === 2).length} reviews</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-orange-500 h-2 rounded-full" 
-                      style={{ width: `${reviews.length > 0 ? (reviews.filter(r => r.rating === 2).length / reviews.length) * 100 : 0}%` }}
+                      style={{ width: `${subaccountWithReviews.reviews.length > 0 ? (subaccountWithReviews.reviews.filter(r => r.rating === 2).length / subaccountWithReviews.reviews.length) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>1 Star</span>
-                    <span>{reviews.filter(r => r.rating === 1).length} reviews</span>
+                    <span>{subaccountWithReviews.reviews.filter(r => r.rating === 1).length} reviews</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-red-500 h-2 rounded-full" 
-                      style={{ width: `${reviews.length > 0 ? (reviews.filter(r => r.rating === 1).length / reviews.length) * 100 : 0}%` }}
+                      style={{ width: `${subaccountWithReviews.reviews.length > 0 ? (subaccountWithReviews.reviews.filter(r => r.rating === 1).length / subaccountWithReviews.reviews.length) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
@@ -310,7 +306,7 @@ export default async function SubaccountReviewsPage({
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Positive Sentiment</span>
-                  <span className="font-medium">{reviews.length > 0 ? Math.round((reviews.filter(r => r.rating >= 4).length / reviews.length) * 100) : 0}%</span>
+                  <span className="font-medium">{subaccountWithReviews.reviews.length > 0 ? Math.round((subaccountWithReviews.reviews.filter(r => r.rating >= 4).length / subaccountWithReviews.reviews.length) * 100) : 0}%</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Avg Response Time</span>
@@ -318,7 +314,7 @@ export default async function SubaccountReviewsPage({
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">This Month</span>
-                  <span className="font-medium">{reviews.length} reviews</span>
+                  <span className="font-medium">{subaccountWithReviews.reviews.length} reviews</span>
                 </div>
               </CardContent>
             </Card>

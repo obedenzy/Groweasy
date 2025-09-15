@@ -1,6 +1,7 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase-client';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,7 +32,13 @@ const pathNames: Record<string, string> = {
 
 export default function TopNav() {
   const pathname = usePathname();
-  const pathSegments = pathname.split('/').filter(Boolean);
+  const router = useRouter();
+  const pathSegments = pathname ? pathname.split('/').filter(Boolean) : [];
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/auth/login');
+  };
 
   return (
     <div className="h-16 border-b border-slate-200 bg-slate-800 text-white">
@@ -47,12 +54,13 @@ export default function TopNav() {
                 const href = '/' + pathSegments.slice(0, index + 1).join('/');
                 const isLast = index === pathSegments.length - 1;
                 const displayName = pathNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
+                const isNonClickable = segment === 'subaccount' || segment === 'agency';
 
                 return (
                   <div key={segment} className="flex items-center">
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
-                      {isLast ? (
+                      {isLast || isNonClickable ? (
                         <BreadcrumbPage className="text-white">{displayName}</BreadcrumbPage>
                       ) : (
                         <BreadcrumbLink href={href} className="text-slate-300 hover:text-white">{displayName}</BreadcrumbLink>
@@ -94,16 +102,16 @@ export default function TopNav() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Admin User</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>

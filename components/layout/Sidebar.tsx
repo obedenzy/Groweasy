@@ -60,6 +60,11 @@ const getSubaccountNavigation = (subaccountId: string) => [
     icon: Star,
   },
   {
+    name: 'Users',
+    href: `/subaccount/${subaccountId}/users`,
+    icon: Users,
+  },
+  {
     name: 'Calendar',
     href: `/subaccount/${subaccountId}/calendar`,
     icon: Calendar,
@@ -87,14 +92,14 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
   const [collapsed, setCollapsed] = useState(false);
   const { data: session } = useSession();
   
-  // Get navigation items based on current route context
   const getNavigation = () => {
     if (!session?.user) return [];
-    
-    // Context-aware navigation: agency context shows agency nav, subaccount context shows subaccount nav
-    if (agencyId && !subaccountId) {
+
+    if (userRole === 'AGENCY_ADMIN' && agencyId && !subaccountId) {
       return getAgencyNavigation(agencyId);
-    } else if (subaccountId) {
+    }
+    
+    if (subaccountId) {
       return getSubaccountNavigation(subaccountId);
     }
     
@@ -102,8 +107,8 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
   };
 
   const navigation = getNavigation();
-  const isAgencyContext = agencyId && !subaccountId;
-  const isSubaccountContext = !!subaccountId;
+  const badgeText = userRole === 'AGENCY_ADMIN' ? 'Agency Admin' : 'Business User';
+  const badgeVariant = userRole === 'AGENCY_ADMIN' ? 'default' : 'secondary';
 
   return (
     <div className={cn(
@@ -118,7 +123,7 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
           </div>
           {!collapsed && (
             <span className="text-lg font-bold text-white">
-              Grow Easy
+              Review Master
             </span>
           )}
         </div>
@@ -172,10 +177,10 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
                 <div className="flex flex-col">
                   <span className="text-sm text-white">{session.user.name}</span>
                   <Badge 
-                    variant={isAgencyContext ? 'default' : 'secondary'}
+                    variant={badgeVariant}
                     className="text-xs w-fit"
                   >
-                    {isAgencyContext ? 'Agency Admin' : 'Business User'}
+                    {badgeText}
                   </Badge>
                 </div>
               </div>

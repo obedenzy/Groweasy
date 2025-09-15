@@ -1,159 +1,76 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-server';
+import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  const { email, password, fullName, subaccountName } = await request.json();
+
+  if (!email || !password || !fullName || !subaccountName) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
   try {
-    const body = await request.json();
-    const { name, email, password, confirmPassword, role, businessName } = body;
-
-    // Validation
-    if (!name || !email || !password || !confirmPassword || !role || !businessName) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      );
-    }
-
-    if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: 'Passwords do not match' },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      );
-    }
-
     // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabaseAdmin
+    const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('email', email)
       .single();
 
+    if (existingUserError && existingUserError.code !== 'PGRST116') { // PGRST116: no rows found
+      console.error('Error checking for existing user:', existingUserError);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user in Supabase
-    const { data: newUser, error: userError } = await supabaseAdmin
-      .from('users')
-      .insert({
-        name,
-        email,
-        password: hashedPassword,
-        locale: 'en'
-      })
-      .select()
-      .single();
-
-    if (userError) {
-      console.error('User creation error:', userError);
-      return NextResponse.json(
-        { error: 'Failed to create user account' },
-        { status: 500 }
-      );
-    }
-
-    // If user is a subaccount admin, create agency and subaccount
-    if (role === 'subaccount_admin' && businessName) {
-      // Create agency first
-      const { data: agency, error: agencyError } = await supabaseAdmin
-        .from('agencies')
-        .insert({
-          name: `${businessName} Agency`,
-          slug: businessName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          status: 'ACTIVE'
-        })
-        .select()
-        .single();
-
-      if (agencyError) {
-        console.error('Agency creation error:', agencyError);
-        // Cleanup user if agency creation fails
-        await supabaseAdmin.from('users').delete().eq('id', newUser.id);
-        return NextResponse.json(
-          { error: 'Failed to create agency' },
-          { status: 500 }
-        );
-      }
-
-      // Create subaccount
-      const { data: subaccount, error: subaccountError } = await supabaseAdmin
-        .from('subaccounts')
-        .insert({
-          agency_id: agency.id,
-          name: businessName,
-          slug: businessName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          status: 'ACTIVE'
-        })
-        .select()
-        .single();
-
-      if (subaccountError) {
-        console.error('Subaccount creation error:', subaccountError);
-        // Cleanup user and agency if subaccount creation fails
-        await supabaseAdmin.from('agencies').delete().eq('id', agency.id);
-        await supabaseAdmin.from('users').delete().eq('id', newUser.id);
-        return NextResponse.json(
-          { error: 'Failed to create business account' },
-          { status: 500 }
-        );
-      }
-
-      // Create agency membership
-      const { error: membershipError } = await supabaseAdmin
-        .from('user_agency_memberships')
-        .insert({
-          user_id: newUser.id,
-          agency_id: agency.id,
-          role: 'AGENCY_ADMIN'
-        });
-
-      if (membershipError) {
-        console.error('Agency membership error:', membershipError);
-        // Note: We continue here as the core entities are created
-      }
-
-      // Create subaccount access
-      const { error: accessError } = await supabaseAdmin
-        .from('subaccount_users')
-        .insert({
-          user_id: newUser.id,
-          subaccount_id: subaccount.id,
-          role: 'SUBACCOUNT_ADMIN'
-        });
-
-      if (accessError) {
-        console.error('Subaccount access error:', accessError);
-        // Note: We continue here as the core entities are created
-      }
-    }
-
-    return NextResponse.json(
-      { 
-        message: 'Registration successful! You can now sign in with your credentials.',
-        success: true 
+    // 1. Create a new user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: 'SUBACCOUNT_USER', // Default role
+        },
       },
-      { status: 201 }
-    );
+    });
+
+    if (authError) {
+      console.error('Auth sign-up error:', authError);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
+
+    if (!authData.user) {
+      return NextResponse.json({ error: 'User creation failed' }, { status: 500 });
+    }
+
+    const newUser = authData.user;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Use a transaction to ensure all-or-nothing creation of agency and subaccount
+    const { data, error: transactionError } = await supabaseAdmin.rpc('create_subaccount_for_default_agency', { 
+        p_email: email,
+        p_full_name: fullName,
+        p_password: hashedPassword,
+        p_subaccount_name: subaccountName, 
+        p_user_id: newUser.id
+    });
+
+    if (transactionError) {
+        console.error('Transaction error:', transactionError);
+        // Clean up the created user if the transaction fails
+        await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+        return NextResponse.json({ error: 'Failed to create subaccount' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: 'User and subaccount created successfully' }, { status: 201 });
 
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'Registration failed. Please try again.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

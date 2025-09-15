@@ -4,83 +4,45 @@ import { getToken } from 'next-auth/jwt';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Allow public paths without any auth checks
-  if (
-    pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/reviews') || // Public review API endpoints
-    pathname.startsWith('/auth') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/reviews') || // Public review collection pages
-    pathname === '/' ||
-    pathname.startsWith('/favicon') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Get the token for protected routes
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  
-  // Require authentication for all protected routes
-  if (!token) {
-    return NextResponse.redirect(new URL('/auth/login', request.url));
-  }
 
-  // Agency routes - only for agency admins
-  if (pathname.startsWith('/agency/')) {
-    if (token.role !== 'AGENCY_ADMIN') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    
-    // Extract agency ID from path
-    const agencyIdFromPath = pathname.split('/')[2];
-    if (agencyIdFromPath && token.agencyId !== agencyIdFromPath) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  // Subaccount routes - for agency admins and subaccount users
-  if (pathname.startsWith('/subaccount/')) {
-    const subaccountIdFromPath = pathname.split('/')[2];
-    
-    if (token.role === 'AGENCY_ADMIN') {
-      // Agency admins need to verify the subaccount belongs to their agency
-      // This will be validated server-side in the actual components
-      return NextResponse.next();
-    } else if (token.role === 'SUBACCOUNT_USER') {
-      // Subaccount users can only access their own subaccount
-      if (token.subaccountId !== subaccountIdFromPath) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-    } else {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  // Dashboard redirects based on role
-  if (pathname === '/dashboard') {
+  // If a user is logged in, they should not be on the homepage or auth pages.
+  // Redirect them to their appropriate dashboard.
+  if (token && (pathname === '/' || pathname.startsWith('/auth'))) {
     if (token.role === 'AGENCY_ADMIN' && token.agencyId) {
       return NextResponse.redirect(new URL(`/agency/${token.agencyId}/dashboard`, request.url));
-    } else if (token.role === 'SUBACCOUNT_USER' && token.subaccountId) {
+    }
+    if (token.role === 'SUBACCOUNT_USER' && token.subaccountId) {
       return NextResponse.redirect(new URL(`/subaccount/${token.subaccountId}/dashboard`, request.url));
     }
+    // Fallback if role/ID is missing, though this shouldn't happen in a valid state.
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // If a user is not logged in, they can only access public pages.
+  // If they try to access a protected page, redirect them to the login page.
+  const isProtectedRoute = pathname.startsWith('/agency') || pathname.startsWith('/subaccount') || pathname.startsWith('/dashboard');
+
+  if (!token && isProtectedRoute) {
+    const loginUrl = new URL('/auth/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
+  /*
+   * This matcher ensures the middleware runs on all the paths we need to check,
+   * including the homepage, authentication pages, and all protected routes.
+   * It is more explicit and reliable than the previous regex-based matcher.
+   */
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (NextAuth API routes)
-     * - api/reviews (Public review API endpoints)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - reviews (public review collection pages)
-     */
-    '/((?!api/auth|api/reviews|_next/static|_next/image|favicon.ico|reviews).*)',
+    '/', // The marketing homepage
+    '/auth/:path*', // All authentication pages
+    '/dashboard/:path*', // Generic dashboard and its sub-paths
+    '/agency/:path*', // All agency-specific routes
+    '/subaccount/:path*', // All subaccount-specific routes
   ],
 };
