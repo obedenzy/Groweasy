@@ -9,39 +9,42 @@ export async function GET(
   try {
     const subaccountId = params.subaccountId;
 
-    // Step 1: Fetch core subaccount details
-    const { data: subaccount, error: subaccountError } = await supabaseAdmin
+    // Correctly fetch all data, including settings, in a single query
+    const { data, error } = await supabaseAdmin
       .from('subaccounts')
-      .select('id, name, logo, is_active')
+      .select(`
+        id,
+        name,
+        logo,
+        subaccount_settings (
+          is_active,
+          google_review_link,
+          review_threshold,
+          thank_you_message
+        )
+      `)
       .eq('id', subaccountId)
       .single();
 
-    if (subaccountError || !subaccount) {
-      console.error('Subaccount fetch error:', subaccountError);
+    if (error || !data) {
+      console.error('Subaccount fetch error:', error);
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
 
-    // Step 2: Fetch review-specific settings
-    const { data: settings, error: settingsError } = await supabaseAdmin
-      .from('subaccount_settings')
-      .select('google_review_link, review_threshold, thank_you_message')
-      .eq('subaccount_id', subaccountId)
-      .single();
-      
-    // It's okay if settings don't exist; we can use defaults.
-    if (settingsError) {
-      console.warn(`No settings found for subaccount ${subaccountId}, using default values.`);
-    }
+    // Safely extract settings and provide default values
+    const settings = Array.isArray(data.subaccount_settings) && data.subaccount_settings.length > 0
+      ? data.subaccount_settings[0]
+      : { is_active: false }; // Default to inactive
 
-    // Step 3: Combine data for the response
+    // Construct the response with data from the correct sources
     const responseData = {
-      id: subaccount.id,
-      businessName: subaccount.name,
-      logoUrl: subaccount.logo, // Use the correct 'logo' field
-      isActive: subaccount.is_active,
-      googleReviewLink: settings?.google_review_link,
-      reviewThreshold: settings?.review_threshold ?? 4,
-      thankYouMessage: settings?.thank_you_message,
+      id: data.id,
+      businessName: data.name,
+      logoUrl: data.logo,
+      isActive: settings.is_active, // Use is_active from settings
+      googleReviewLink: settings.google_review_link,
+      reviewThreshold: settings.review_threshold ?? 4,
+      thankYouMessage: settings.thank_you_message,
     };
 
     return NextResponse.json(responseData);
@@ -69,18 +72,22 @@ export async function POST(
       customerPhone,
     } = await request.json();
 
-    // Validate subaccount
+    // Validate subaccount and its active status from the settings table
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
-      .select('id, is_active')
+      .select('id, subaccount_settings(is_active)')
       .eq('id', subaccountId)
       .single();
 
     if (subaccountError || !subaccount) {
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
+    
+    const settings = Array.isArray(subaccount.subaccount_settings) && subaccount.subaccount_settings.length > 0
+    ? subaccount.subaccount_settings[0]
+    : { is_active: false };
 
-    if (!subaccount.is_active) {
+    if (!settings.is_active) {
       return NextResponse.json(
         { error: 'This business is not currently accepting reviews.' },
         { status: 403 }
@@ -88,12 +95,16 @@ export async function POST(
     }
 
     // Check if customer already submitted a review
-    const { data: existingReview } = await supabaseAdmin
+    const { data: existingReview, error: existingReviewError } = await supabaseAdmin
       .from('reviews')
       .select('id')
       .eq('subaccount_id', subaccountId)
       .eq('customer_email', customerEmail)
-      .single();
+      .maybeSingle(); // Use maybeSingle to avoid error if no review exists
+
+    if (existingReviewError && existingReviewError.code !== 'PGRST116') { // Ignore 'Not found' error
+      throw existingReviewError;
+    }
 
     if (existingReview) {
       return NextResponse.json(
