@@ -1,4 +1,4 @@
-'''
+
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-server';
 
@@ -9,11 +9,10 @@ export async function GET(
   try {
     const subaccountId = params.subaccountId;
 
+    // Step 1: Fetch core subaccount details
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
-      .select(
-        'id, name, logo, is_active, google_review_link, review_threshold, thank_you_message'
-      )
+      .select('id, name, logo, is_active')
       .eq('id', subaccountId)
       .single();
 
@@ -22,14 +21,27 @@ export async function GET(
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
 
+    // Step 2: Fetch review-specific settings
+    const { data: settings, error: settingsError } = await supabaseAdmin
+      .from('subaccount_settings')
+      .select('google_review_link, review_threshold, thank_you_message')
+      .eq('subaccount_id', subaccountId)
+      .single();
+      
+    // It's okay if settings don't exist; we can use defaults.
+    if (settingsError) {
+      console.warn(`No settings found for subaccount ${subaccountId}, using default values.`);
+    }
+
+    // Step 3: Combine data for the response
     const responseData = {
       id: subaccount.id,
       businessName: subaccount.name,
-      logoUrl: subaccount.logo,
+      logoUrl: subaccount.logo, // Use the correct 'logo' field
       isActive: subaccount.is_active,
-      googleReviewLink: subaccount.google_review_link,
-      reviewThreshold: subaccount.review_threshold,
-      thankYouMessage: subaccount.thank_you_message,
+      googleReviewLink: settings?.google_review_link,
+      reviewThreshold: settings?.review_threshold ?? 4,
+      thankYouMessage: settings?.thank_you_message,
     };
 
     return NextResponse.json(responseData);
@@ -123,4 +135,3 @@ export async function POST(
     );
   }
 }
-'''
