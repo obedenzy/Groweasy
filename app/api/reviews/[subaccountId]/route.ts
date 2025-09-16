@@ -12,7 +12,7 @@ export async function GET(
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
       .select(
-        'id, name, logo_url, is_active, google_review_link, review_threshold, thank_you_message'
+        'id, name, logo, is_active, google_review_link, review_threshold, thank_you_message'
       )
       .eq('id', subaccountId)
       .single();
@@ -25,7 +25,7 @@ export async function GET(
     const responseData = {
       id: subaccount.id,
       businessName: subaccount.name,
-      logoUrl: subaccount.logo_url,
+      logoUrl: subaccount.logo,
       isActive: subaccount.is_active,
       googleReviewLink: subaccount.google_review_link,
       reviewThreshold: subaccount.review_threshold,

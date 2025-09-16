@@ -7,85 +7,104 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Copy, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase-client';
 
 interface ReviewLinkSharerProps {
     subaccountId: string;
 }
 
 export function ReviewLinkSharer({ subaccountId }: ReviewLinkSharerProps) {
-    const [reviewLink, setReviewLink] = useState('');
+    const [reviewUrl, setReviewUrl] = useState('');
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const origin = window.location.origin;
-            setReviewLink(`${origin}/reviews/${subaccountId}`);
-        }
+        const fetchSubaccountSlug = async () => {
+            if (!subaccountId) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('subaccounts')
+                    .select('slug')
+                    .eq('id', subaccountId)
+                    .single();
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data && data.slug) {
+                    const origin = window.location.origin;
+                    const url = `${origin}/reviews/${data.slug}`;
+                    setReviewUrl(url);
+                    setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`);
+                }
+            } catch (error) {
+                console.error('Error fetching subaccount slug:', error);
+                toast.error('Could not generate the review link.');
+            }
+        };
+
+        fetchSubaccountSlug();
     }, [subaccountId]);
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        toast.success('Copied to clipboard');
+    const copyToClipboard = () => {
+        if (!reviewUrl) return;
+        navigator.clipboard.writeText(reviewUrl);
+        toast.success('Review link copied to clipboard');
     };
 
     const handleDownloadQrCode = () => {
-        if (!reviewLink) return;
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${reviewLink}`;
-        window.open(qrCodeUrl, '_blank');
+        if (!qrCodeUrl) return;
+        window.open(qrCodeUrl.replace('size=150x150', 'size=500x500'), '_blank');
     };
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Review Collection Links</CardTitle>
+                <CardTitle>Share Your Review Link</CardTitle>
                 <CardDescription>
-                    Share these links to collect reviews from customers
+                    Share this link with your customers to start collecting reviews.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Customer Review URL</Label>
-                        <div className="flex space-x-2">
-                            <Input
-                                readOnly
-                                value={reviewLink}
-                                className="bg-muted"
-                                placeholder="Loading..."
-                            />
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => copyToClipboard(reviewLink)}
-                                disabled={!reviewLink}
-                            >
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            This is the link you can share with your customers to collect reviews.
-                        </p>
+                <div className="space-y-2">
+                    <Label>Customer Review URL</Label>
+                    <div className="flex space-x-2">
+                        <Input
+                            readOnly
+                            value={reviewUrl || 'Loading...'}
+                            className="bg-muted"
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={copyToClipboard}
+                            disabled={!reviewUrl}
+                        >
+                            <Copy className="h-4 w-4" />
+                        </Button>
                     </div>
+                </div>
 
-                    <div className="space-y-2">
-                        <Label>QR Code</Label>
-                        <div className="flex items-center space-x-4">
-                            <div className="w-32 h-32 bg-muted border rounded-lg flex items-center justify-center">
-                                {reviewLink ? (
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${reviewLink}`} alt="Review QR Code" />
-                                ) : (
-                                    <div className="text-xs text-muted-foreground">Loading...</div>
-                                )}
-                            </div>
-                            <div>
-                                <Button type="button" variant="outline" size="sm" onClick={handleDownloadQrCode} disabled={!reviewLink}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Download QR Code
-                                </Button>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Print this QR code for in-store use
-                                </p>
-                            </div>
+                <div className="space-y-2">
+                    <Label>QR Code</Label>
+                    <div className="flex items-center space-x-4">
+                        <div className="w-32 h-32 bg-muted border rounded-lg flex items-center justify-center p-2">
+                            {qrCodeUrl ? (
+                                <img src={qrCodeUrl} alt="Review QR Code" />
+                            ) : (
+                                <div className="text-xs text-muted-foreground">Loading...</div>
+                            )}
+                        </div>
+                        <div>
+                            <Button type="button" variant="outline" onClick={handleDownloadQrCode} disabled={!qrCodeUrl}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download QR Code
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Print and display this QR code for customers.
+                            </p>
                         </div>
                     </div>
                 </div>
