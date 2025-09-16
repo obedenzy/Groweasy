@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building, Star, Bell, Link, Upload, Copy, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { ReviewLinkSharer } from '@/components/reviews/ReviewLinkSharer';
 
 interface SubaccountSettings {
   businessName: string;
@@ -231,8 +232,7 @@ export default function SubaccountSettingsPage({
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to save notification settings');
-      }
-    } catch (error) {
+      }n    } catch (error) {
       console.error('Error saving notification settings:', error);
       toast.error('Error saving notification settings');
     } finally {
@@ -258,11 +258,6 @@ export default function SubaccountSettingsPage({
     reader.readAsDataURL(file);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -274,10 +269,8 @@ export default function SubaccountSettingsPage({
     );
   }
 
-  const reviewLink = `${process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://your-domain.com'}/reviews/${params.subaccountId}`;
-
   return (
-    <div className="p-6 space-y-6">
+    <div>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Business Settings</h1>
         <p className="text-muted-foreground">
@@ -499,90 +492,7 @@ export default function SubaccountSettingsPage({
         </TabsContent>
 
         <TabsContent value="sharing" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Review Collection Links</CardTitle>
-              <CardDescription>
-                Share these links to collect reviews from customers
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Direct Review Link</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      readOnly
-                      value={reviewLink}
-                      className="bg-muted"
-                    />
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => copyToClipboard(reviewLink)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Share this link directly with customers
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>QR Code</Label>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-32 h-32 bg-muted border rounded-lg flex items-center justify-center">
-                      <p className="text-xs text-center text-muted-foreground">
-                        QR Code<br/>Available Soon
-                      </p>
-                    </div>
-                    <div>
-                      <Button type="button" variant="outline" size="sm" disabled>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download QR Code
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Print this QR code for in-store use
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Email Template</Label>
-                  <Textarea
-                    defaultValue={`Hi [Customer Name], 
-
-Thank you for choosing ${businessData.businessName || 'us'}! We'd love to hear about your experience. 
-
-Please take a moment to leave us a review: ${reviewLink}
-
-Best regards,
-The ${businessData.businessName || 'Team'} Team`}
-                    rows={6}
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Customize this template for email follow-ups
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>SMS Template</Label>
-                  <Textarea
-                    defaultValue={`Thanks for visiting ${businessData.businessName || 'us'}! Share your experience: ${reviewLink}`}
-                    rows={2}
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Template for SMS review requests
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ReviewLinkSharer subaccountId={params.subaccountId} />
         </TabsContent>
       </Tabs>
     </div>

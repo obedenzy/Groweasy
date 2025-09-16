@@ -1,6 +1,7 @@
 import { getCurrentUser, hasAgencyAccess } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -271,6 +272,9 @@ export default async function AgencyUsersPage({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/agency/${params.agencyId}/profile?userId=${user.id}`}>View Details</Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem>
                         Edit User
                       </DropdownMenuItem>

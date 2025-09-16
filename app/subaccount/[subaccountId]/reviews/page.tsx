@@ -10,6 +10,7 @@ import { ReviewSettings } from '@/components/review-settings';
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { DashboardCharts } from '@/components/dashboard-charts';
 import { ReviewPageActions } from '@/components/reviews/ReviewPageActions';
+import { ReviewLinkSharer } from '@/components/reviews/ReviewLinkSharer';
 
 export default async function SubaccountReviewsPage({
   params,
@@ -80,7 +81,7 @@ export default async function SubaccountReviewsPage({
     pending: reviewsData.filter(r => r.status === 'PENDING').length,
     averageRating: reviewsData.length > 0 ? reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length : 0,
   };
-
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -336,6 +337,7 @@ export default async function SubaccountReviewsPage({
               <ReviewPreview subaccountId={params.subaccountId} />
             </CardContent>
           </Card>
+          <ReviewLinkSharer subaccountId={params.subaccountId} />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">

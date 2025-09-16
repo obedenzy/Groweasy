@@ -42,6 +42,11 @@ const getAgencyNavigation = (agencyId: string) => [
     icon: BarChart3,
   },
   {
+    name: 'Profile',
+    href: `/agency/${agencyId}/profile`,
+    icon: UserCircle,
+  },
+  {
     name: 'Settings',
     href: `/agency/${agencyId}/settings`,
     icon: Settings,
@@ -73,6 +78,11 @@ const getSubaccountNavigation = (subaccountId: string) => [
     name: 'Customers',
     href: `/subaccount/${subaccountId}/customers`,
     icon: Users,
+  },
+  {
+    name: 'Profile',
+    href: `/subaccount/${subaccountId}/profile`,
+    icon: UserCircle,
   },
   {
     name: 'Settings',
@@ -110,9 +120,15 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
   const badgeText = userRole === 'AGENCY_ADMIN' ? 'Agency Admin' : 'Business User';
   const badgeVariant = userRole === 'AGENCY_ADMIN' ? 'default' : 'secondary';
 
+  const profileLink = subaccountId 
+    ? `/subaccount/${subaccountId}/profile?userId=${session?.user.id}`
+    : agencyId 
+    ? `/agency/${agencyId}/profile?userId=${session?.user.id}`
+    : '#';
+
   return (
     <div className={cn(
-      "hidden md:flex h-full flex-col bg-slate-900 text-white transition-all duration-300",
+      "flex h-full flex-col bg-slate-900 text-white transition-all duration-300",
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Header */}
@@ -166,7 +182,7 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
 
       <div className="border-t border-slate-700 mt-auto">
         {/* User Info Footer */}
-        <div className="p-3">
+        <Link href={profileLink} className="block p-3 hover:bg-slate-800">
           <div className={cn(
             "flex items-center space-x-2",
             collapsed && "justify-center"
@@ -189,7 +205,7 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
               <UserCircle className="h-6 w-6 text-slate-400" />
             )}
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );
