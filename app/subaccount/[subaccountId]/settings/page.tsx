@@ -232,7 +232,8 @@ export default function SubaccountSettingsPage({
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to save notification settings');
-      }n    } catch (error) {
+      }
+    } catch (error) {
       console.error('Error saving notification settings:', error);
       toast.error('Error saving notification settings');
     } finally {
@@ -279,18 +280,10 @@ export default function SubaccountSettingsPage({
       </div>
 
       <Tabs defaultValue="business" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="business" className="flex items-center gap-2">
             <Building className="h-4 w-4" />
             Business
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="sharing" className="flex items-center gap-2">
-            <Link className="h-4 w-4" />
-            Sharing
           </TabsTrigger>
         </TabsList>
 
@@ -396,103 +389,6 @@ export default function SubaccountSettingsPage({
               </form>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Choose how you want to be notified about new reviews
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleNotificationSubmit} className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Email notifications</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive email alerts for new reviews
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={notificationData.emailNotifications}
-                      onCheckedChange={(checked) => setNotificationData(prev => ({ ...prev, emailNotifications: checked }))}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>SMS notifications</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Get text messages for urgent reviews
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={notificationData.smsNotifications}
-                      onCheckedChange={(checked) => setNotificationData(prev => ({ ...prev, smsNotifications: checked }))}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Weekly summary</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive weekly review performance summary
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={notificationData.weeklyDigest}
-                      onCheckedChange={(checked) => setNotificationData(prev => ({ ...prev, weeklyDigest: checked }))}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Low rating alerts</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Immediate alerts for reviews below 3 stars
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={notificationData.lowRatingAlerts}
-                      onCheckedChange={(checked) => setNotificationData(prev => ({ ...prev, lowRatingAlerts: checked }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notification-email">Notification Email</Label>
-                  <Input
-                    id="notification-email"
-                    type="email"
-                    placeholder="notifications@business.com"
-                    value={notificationData.notificationEmail}
-                    onChange={(e) => setNotificationData(prev => ({ ...prev, notificationEmail: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notification-phone">SMS Phone Number</Label>
-                  <Input
-                    id="notification-phone"
-                    placeholder="+1 (555) 123-4567"
-                    value={notificationData.notificationPhone}
-                    onChange={(e) => setNotificationData(prev => ({ ...prev, notificationPhone: e.target.value }))}
-                  />
-                </div>
-
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving...' : 'Save Notification Settings'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sharing" className="space-y-4">
-          <ReviewLinkSharer subaccountId={params.subaccountId} />
         </TabsContent>
       </Tabs>
     </div>

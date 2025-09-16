@@ -9,7 +9,6 @@ export async function GET(
     const subaccountId = params.subaccountId;
 
     // Fetch subaccount data and settings
-    console.log('Fetching subaccount:', subaccountId);
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
       .select(`
@@ -18,6 +17,7 @@ export async function GET(
         logo,
         status,
         subaccount_settings (
+          enable_reviews,
           google_review_link,
           review_threshold,
           thank_you_message
@@ -26,21 +26,23 @@ export async function GET(
       .eq('id', subaccountId)
       .single();
     
-    console.log('Subaccount query result:', { subaccount, subaccountError });
-
     if (subaccountError || !subaccount) {
+      console.error('Subaccount fetch error:', subaccountError);
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
+
+    const settings = subaccount.subaccount_settings?.[0];
+    const reviewsEnabled = settings?.enable_reviews ?? true; // Default to true if settings row doesn't exist
 
     // Return the data needed for the review form
     return NextResponse.json({
       id: subaccount.id,
       businessName: subaccount.name,
       logoUrl: subaccount.logo,
-      isActive: subaccount.status === 'active',
-      googleReviewLink: subaccount.subaccount_settings?.[0]?.google_review_link,
-      reviewThreshold: subaccount.subaccount_settings?.[0]?.review_threshold || 4,
-      thankYouMessage: subaccount.subaccount_settings?.[0]?.thank_you_message || 'Thank you for your feedback!'
+      isActive: subaccount.status === 'active' && reviewsEnabled,
+      googleReviewLink: settings?.google_review_link,
+      reviewThreshold: settings?.review_threshold || 4,
+      thankYouMessage: settings?.thank_you_message || 'Thank you for your feedback!'
     });
   } catch (error) {
     console.error('Error fetching subaccount data:', error);
@@ -63,15 +65,24 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if subaccount exists
+    // Check if subaccount exists and is active for reviews
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
-      .select('id')
+      .select(`
+        id, 
+        status,
+        subaccount_settings ( enable_reviews )
+      `)
       .eq('id', subaccountId)
       .single();
 
     if (subaccountError || !subaccount) {
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
+    }
+    
+    const reviewsEnabled = subaccount.subaccount_settings?.[0]?.enable_reviews ?? true;
+    if (subaccount.status !== 'active' || !reviewsEnabled) {
+      return NextResponse.json({ error: 'This business is not currently accepting reviews.' }, { status: 403 });
     }
 
     // Check if customer already submitted a review

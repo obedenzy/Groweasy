@@ -56,7 +56,7 @@ export function ReviewPageActions({ subaccountId, onFilterChange }: ReviewPageAc
     onFilterChange?.({});
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => value !== undefined && value !== '');
+  const hasActiveFilters = Object.values(filters).some(value => value !== undefined);
 
   return (
     <div className="flex space-x-2">
@@ -68,7 +68,7 @@ export function ReviewPageActions({ subaccountId, onFilterChange }: ReviewPageAc
             Filter
             {hasActiveFilters && (
               <Badge variant="secondary" className="ml-2 px-1 py-0 text-xs">
-                {Object.values(filters).filter(v => v !== undefined && v !== '').length}
+                {Object.values(filters).filter(v => v !== undefined).length}
               </Badge>
             )}
           </Button>
@@ -84,14 +84,14 @@ export function ReviewPageActions({ subaccountId, onFilterChange }: ReviewPageAc
             <div>
               <label className="text-sm font-medium mb-2 block">Status</label>
               <Select 
-                value={filters.status || ''} 
-                onValueChange={(value) => handleFilterChange('status', value || undefined)}
+                value={filters.status || 'all'} 
+                onValueChange={(value) => handleFilterChange('status', value === 'all' ? undefined : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
@@ -102,14 +102,14 @@ export function ReviewPageActions({ subaccountId, onFilterChange }: ReviewPageAc
             <div>
               <label className="text-sm font-medium mb-2 block">Rating</label>
               <Select 
-                value={filters.rating?.toString() || ''} 
-                onValueChange={(value) => handleFilterChange('rating', value ? parseInt(value) : undefined)}
+                value={filters.rating?.toString() || 'all'} 
+                onValueChange={(value) => handleFilterChange('rating', value === 'all' ? undefined : parseInt(value))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All ratings" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All ratings</SelectItem>
+                  <SelectItem value="all">All ratings</SelectItem>
                   <SelectItem value="5">5 stars</SelectItem>
                   <SelectItem value="4">4 stars</SelectItem>
                   <SelectItem value="3">3 stars</SelectItem>
@@ -122,14 +122,14 @@ export function ReviewPageActions({ subaccountId, onFilterChange }: ReviewPageAc
             <div>
               <label className="text-sm font-medium mb-2 block">Date Range</label>
               <Select 
-                value={filters.dateRange || ''} 
-                onValueChange={(value) => handleFilterChange('dateRange', value || undefined)}
+                value={filters.dateRange || 'all'} 
+                onValueChange={(value) => handleFilterChange('dateRange', value === 'all' ? undefined : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All time" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All time</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="week">This week</SelectItem>
                   <SelectItem value="month">This month</SelectItem>

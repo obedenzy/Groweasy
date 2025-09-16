@@ -133,16 +133,16 @@ export default function Sidebar({ userRole, agencyId, subaccountId }: SidebarPro
     )}>
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-slate-700">
-        <div className={cn("flex items-center space-x-2", collapsed && "justify-center")}>
+        <button onClick={() => setCollapsed(!collapsed)} className={cn("flex items-center space-x-2", collapsed && "justify-center")}>
           <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Star className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
             <span className="text-lg font-bold text-white">
-              Review Master
+              Grow Easy
             </span>
           )}
-        </div>
+        </button>
         <Button
           variant="ghost"
           size="sm"

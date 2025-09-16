@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 interface ReviewSettingsProps {
@@ -21,10 +20,6 @@ export function ReviewSettings({ subaccountId }: ReviewSettingsProps) {
   const [reviewData, setReviewData] = useState({
     googleReviewLink: '',
     reviewThreshold: 4,
-    autoApprovePositive: true,
-    redirectToGoogle: true,
-    collectNegativePrivately: true,
-    requireCustomerName: false,
     thankYouMessage: '',
   });
 
@@ -105,60 +100,6 @@ export function ReviewSettings({ subaccountId }: ReviewSettingsProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleReviewSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Auto-approve positive reviews</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Automatically approve reviews with {reviewData.reviewThreshold}+ stars
-                  </p>
-                </div>
-                <Switch 
-                  checked={reviewData.autoApprovePositive}
-                  onCheckedChange={(checked) => setReviewData(prev => ({ ...prev, autoApprovePositive: checked }))}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Redirect positive reviews to Google</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Send {reviewData.reviewThreshold}+ star reviewers to Google Reviews
-                  </p>
-                </div>
-                <Switch 
-                  checked={reviewData.redirectToGoogle}
-                  onCheckedChange={(checked) => setReviewData(prev => ({ ...prev, redirectToGoogle: checked }))}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Collect negative feedback privately</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Capture low ratings as private feedback
-                  </p>
-                </div>
-                <Switch 
-                  checked={reviewData.collectNegativePrivately}
-                  onCheckedChange={(checked) => setReviewData(prev => ({ ...prev, collectNegativePrivately: checked }))}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Require customer name</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Make customer name mandatory for reviews
-                  </p>
-                </div>
-                <Switch 
-                  checked={reviewData.requireCustomerName}
-                  onCheckedChange={(checked) => setReviewData(prev => ({ ...prev, requireCustomerName: checked }))}
-                />
-              </div>
-            </div>
-
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="google-url">Google Reviews URL</Label>

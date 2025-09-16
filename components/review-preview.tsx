@@ -53,7 +53,9 @@ export function ReviewPreview({ subaccountId }: { subaccountId: string }) {
           Live Preview
         </div>
         <div className="max-h-[600px] overflow-auto border rounded-lg bg-white">
-          <ReviewForm subaccountId={subaccountId} isPreview={true} />
+          <div className="flex justify-center p-4">
+            <ReviewForm subaccountId={subaccountId} isPreview={true} />
+          </div>
         </div>
       </div>
     </div>

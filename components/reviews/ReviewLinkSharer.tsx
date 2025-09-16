@@ -30,12 +30,7 @@ export function ReviewLinkSharer({ subaccountId }: ReviewLinkSharerProps) {
     const handleDownloadQrCode = () => {
         if (!reviewLink) return;
         const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${reviewLink}`;
-        const link = document.createElement('a');
-        link.href = qrCodeUrl;
-        link.download = 'review-qr-code.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        window.open(qrCodeUrl, '_blank');
     };
 
     return (

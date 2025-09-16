@@ -30,11 +30,18 @@ export async function GET(
     // Return relevant settings for the review form
     const settingsData = {
       businessName: settings?.business_name || subaccount.name,
+      businessType: settings?.business_type || null,
+      address: settings?.address || null,
+      city: settings?.city || null,
+      state: settings?.state || null,
+      zipCode: settings?.zip_code || null,
+      country: settings?.country || null,
       logoUrl: settings?.logo_url || null,
       googleReviewLink: settings?.google_review_link || null,
       reviewThreshold: settings?.review_threshold || 4,
       primaryColor: settings?.primary_color || '#3B82F6',
       thankYouMessage: settings?.thank_you_message || null,
+      timezone: settings?.timezone || 'UTC',
     };
 
     return NextResponse.json({ settings: settingsData });
@@ -74,104 +81,29 @@ export async function PATCH(
     // Parse request body
     const body = await request.json();
     
-    // Validate required fields and types
-    const updates: any = {};
-    
-    if (body.businessName !== undefined) {
-      if (typeof body.businessName !== 'string' || body.businessName.trim().length === 0) {
-        return NextResponse.json(
-          { error: 'Business name must be a non-empty string' },
-          { status: 400 }
-        );
-      }
-      updates.businessName = body.businessName.trim();
-    }
-    
-    if (body.businessType !== undefined) {
-      if (body.businessType && typeof body.businessType !== 'string') {
-        return NextResponse.json(
-          { error: 'Business type must be a string' },
-          { status: 400 }
-        );
-      }
-      updates.businessType = body.businessType?.trim() || null;
-    }
-    
-    if (body.address !== undefined) {
-      updates.address = body.address?.trim() || null;
-    }
-    
-    if (body.city !== undefined) {
-      updates.city = body.city?.trim() || null;
-    }
-    
-    if (body.state !== undefined) {
-      updates.state = body.state?.trim() || null;
-    }
-    
-    if (body.zipCode !== undefined) {
-      updates.zipCode = body.zipCode?.trim() || null;
-    }
-    
-    if (body.country !== undefined) {
-      updates.country = body.country?.trim() || 'US';
-    }
-    
-    if (body.googleReviewLink !== undefined) {
-      if (body.googleReviewLink && !body.googleReviewLink.startsWith('http')) {
-        return NextResponse.json(
-          { error: 'Google review link must be a valid URL' },
-          { status: 400 }
-        );
-      }
-      updates.googleReviewLink = body.googleReviewLink?.trim() || null;
-    }
-    
-    if (body.reviewThreshold !== undefined) {
-      const threshold = parseInt(body.reviewThreshold);
-      if (isNaN(threshold) || threshold < 1 || threshold > 5) {
-        return NextResponse.json(
-          { error: 'Review threshold must be a number between 1 and 5' },
-          { status: 400 }
-        );
-      }
-      updates.reviewThreshold = threshold;
-    }
-    
-    if (body.primaryColor !== undefined) {
-      if (body.primaryColor && !/^#[0-9A-F]{6}$/i.test(body.primaryColor)) {
-        return NextResponse.json(
-          { error: 'Primary color must be a valid hex color code' },
-          { status: 400 }
-        );
-      }
-      updates.primaryColor = body.primaryColor || '#3B82F6';
-    }
-    
-    if (body.thankYouMessage !== undefined) {
-      updates.thankYouMessage = body.thankYouMessage?.trim() || null;
-    }
-    
-    if (body.logoUrl !== undefined) {
-      updates.logoUrl = body.logoUrl?.trim() || null;
-    }
-    
-    if (body.timezone !== undefined) {
-      updates.timezone = body.timezone?.trim() || 'UTC';
-    }
-    
-    if (body.emailNotifications !== undefined) {
-      updates.emailNotifications = Boolean(body.emailNotifications);
-    }
-    
-    if (body.enableReviews !== undefined) {
-      updates.enableReviews = Boolean(body.enableReviews);
-    }
+    const updatePayload: { [key: string]: any } = {};
+
+    if (body.businessName !== undefined) updatePayload.business_name = body.businessName.trim();
+    if (body.businessType !== undefined) updatePayload.business_type = body.businessType?.trim() || null;
+    if (body.address !== undefined) updatePayload.address = body.address?.trim() || null;
+    if (body.city !== undefined) updatePayload.city = body.city?.trim() || null;
+    if (body.state !== undefined) updatePayload.state = body.state?.trim() || null;
+    if (body.zipCode !== undefined) updatePayload.zip_code = body.zipCode?.trim() || null;
+    if (body.country !== undefined) updatePayload.country = body.country?.trim() || 'US';
+    if (body.logoUrl !== undefined) updatePayload.logo_url = body.logoUrl?.trim() || null;
+    if (body.googleReviewLink !== undefined) updatePayload.google_review_link = body.googleReviewLink?.trim() || null;
+    if (body.reviewThreshold !== undefined) updatePayload.review_threshold = parseInt(body.reviewThreshold);
+    if (body.primaryColor !== undefined) updatePayload.primary_color = body.primaryColor || '#3B82F6';
+    if (body.thankYouMessage !== undefined) updatePayload.thank_you_message = body.thankYouMessage?.trim() || null;
+    if (body.timezone !== undefined) updatePayload.timezone = body.timezone?.trim() || 'UTC';
+    if (body.enableReviews !== undefined) updatePayload.enable_reviews = Boolean(body.enableReviews);
+    if (body.emailNotifications !== undefined) updatePayload.email_notifications = Boolean(body.emailNotifications);
+
 
     // Verify subaccount exists
     const { data: subaccount } = await supabaseAdmin
       .from('subaccounts')
-      .select('id, name')
+      .select('id')
       .eq('id', params.subaccountId)
       .single();
 
@@ -181,83 +113,47 @@ export async function PATCH(
         { status: 404 }
       );
     }
-
-    // Get existing settings
-    const { data: existingSettings } = await supabaseAdmin
+    
+    const { data: settings, error } = await supabaseAdmin
       .from('subaccount_settings')
-      .select('*')
-      .eq('subaccount_id', params.subaccountId)
+      .upsert(
+        {
+          subaccount_id: params.subaccountId,
+          ...updatePayload,
+        },
+        {
+          onConflict: 'subaccount_id',
+        }
+      )
+      .select()
       .single();
 
-    let settings;
-    if (!existingSettings) {
-      // Create new settings
-      const { data: newSettings, error: createError } = await supabaseAdmin
-        .from('subaccount_settings')
-        .insert({
-          subaccount_id: params.subaccountId,
-          business_name: updates.businessName || subaccount.name,
-          logo_url: updates.logoUrl,
-          google_review_link: updates.googleReviewLink,
-          review_threshold: updates.reviewThreshold || 4,
-          primary_color: updates.primaryColor || '#3B82F6',
-          thank_you_message: updates.thankYouMessage,
-        })
-        .select()
-        .single();
-      
-      if (createError) {
-        console.error('Settings creation error:', createError);
-        return NextResponse.json(
-          { error: 'Failed to create settings' },
-          { status: 500 }
-        );
-      }
-      settings = newSettings;
-    } else {
-      // Update existing settings
-      const { data: updatedSettings, error: updateError } = await supabaseAdmin
-        .from('subaccount_settings')
-        .update({
-          business_name: updates.businessName || subaccount.name,
-          logo_url: updates.logoUrl,
-          google_review_link: updates.googleReviewLink,
-          review_threshold: updates.reviewThreshold || 4,
-          primary_color: updates.primaryColor || '#3B82F6',
-          thank_you_message: updates.thankYouMessage,
-        })
-        .eq('subaccount_id', params.subaccountId)
-        .select()
-        .single();
-      
-      if (updateError) {
-        console.error('Settings update error:', updateError);
-        return NextResponse.json(
-          { error: 'Failed to update settings' },
-          { status: 500 }
-        );
-      }
-      settings = updatedSettings;
+    if (error) {
+      console.error('Settings upsert error:', error);
+      return NextResponse.json(
+        { error: 'Failed to save settings' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ 
       success: true,
       settings: {
-        businessName: settings.businessName,
-        businessType: settings.businessType,
+        businessName: settings.business_name,
+        businessType: settings.business_type,
         address: settings.address,
         city: settings.city,
         state: settings.state,
-        zipCode: settings.zipCode,
+        zipCode: settings.zip_code,
         country: settings.country,
-        logoUrl: settings.logoUrl,
-        googleReviewLink: settings.googleReviewLink,
-        reviewThreshold: settings.reviewThreshold,
-        primaryColor: settings.primaryColor,
-        thankYouMessage: settings.thankYouMessage,
+        logoUrl: settings.logo_url,
+        googleReviewLink: settings.google_review_link,
+        reviewThreshold: settings.review_threshold,
+        primaryColor: settings.primary_color,
+        thankYouMessage: settings.thank_you_message,
         timezone: settings.timezone,
-        emailNotifications: settings.emailNotifications,
-        enableReviews: settings.enableReviews,
+        emailNotifications: settings.email_notifications,
+        enableReviews: settings.enable_reviews,
       }
     });
 

@@ -1,0 +1,1 @@
+ALTER TABLE subaccount_settings ADD COLUMN business_name TEXT;

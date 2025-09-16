@@ -73,14 +73,16 @@ export default function TopNav() {
               const href = '/' + pathSegments.slice(0, index + 1).join('/');
               const isLast = index === pathSegments.length - 1;
               const displayName = pathNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
-              const isNonClickable = segment === 'subaccount' || segment === 'agency';
+              const isSubaccountSegment = pathSegments[index-1] === 'subaccount';
 
               return (
                 <div key={segment} className="flex items-center">
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    {isLast || isNonClickable ? (
+                    {isLast ? (
                       <BreadcrumbPage>{displayName}</BreadcrumbPage>
+                    ) : isSubaccountSegment ? (
+                        <BreadcrumbLink href={`${href}/dashboard`}>{displayName}</BreadcrumbLink>
                     ) : (
                       <BreadcrumbLink href={href}>{displayName}</BreadcrumbLink>
                     )}
