@@ -12,10 +12,10 @@ async function getSubaccountData(subaccountId: string) {
     .single();
 
   if (error || !data) {
+    console.error(`Error fetching subaccount ${subaccountId}:`, error);
     return null;
   }
 
-  // Convert snake_case to camelCase
   return {
     id: data.id,
     businessName: data.name,
@@ -27,12 +27,8 @@ async function getSubaccountData(subaccountId: string) {
   };
 }
 
-export default async function ReviewPage({ params }: { params: { params: string[] } }) {
-  const subaccountId = params.params[0];
-
-  if (!subaccountId) {
-    notFound();
-  }
+export default async function ReviewPage({ params }: { params: { subaccountId: string } }) {
+  const { subaccountId } = params;
 
   const subaccountData = await getSubaccountData(subaccountId);
 

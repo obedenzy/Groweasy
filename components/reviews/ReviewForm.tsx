@@ -80,6 +80,20 @@ export function ReviewForm({ subaccountData }) {
   const handleInputChange = (field: string, value: string) => {
     setReviewData(prev => ({ ...prev, [field]: value }));
   };
+  
+  if (!subaccountData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="pt-6">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Business Not Found</h2>
+            <p className="text-gray-600">The review link you're looking for doesn't exist or has been disabled.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!subaccountData.isActive) {
     return (

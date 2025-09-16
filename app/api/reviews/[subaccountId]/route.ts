@@ -1,3 +1,4 @@
+'''
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-server';
 
@@ -8,45 +9,36 @@ export async function GET(
   try {
     const subaccountId = params.subaccountId;
 
-    // Fetch subaccount data and settings
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
-      .select(`
-        id,
-        name,
-        logo,
-        status,
-        subaccount_settings (
-          enable_reviews,
-          google_review_link,
-          review_threshold,
-          thank_you_message
-        )
-      `)
+      .select(
+        'id, name, logo_url, is_active, google_review_link, review_threshold, thank_you_message'
+      )
       .eq('id', subaccountId)
       .single();
-    
+
     if (subaccountError || !subaccount) {
       console.error('Subaccount fetch error:', subaccountError);
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
 
-    const settings = subaccount.subaccount_settings?.[0];
-    const reviewsEnabled = settings?.enable_reviews ?? true; // Default to true if settings row doesn't exist
-
-    // Return the data needed for the review form
-    return NextResponse.json({
+    const responseData = {
       id: subaccount.id,
       businessName: subaccount.name,
-      logoUrl: subaccount.logo,
-      isActive: subaccount.status === 'active' && reviewsEnabled,
-      googleReviewLink: settings?.google_review_link,
-      reviewThreshold: settings?.review_threshold || 4,
-      thankYouMessage: settings?.thank_you_message || 'Thank you for your feedback!'
-    });
+      logoUrl: subaccount.logo_url,
+      isActive: subaccount.is_active,
+      googleReviewLink: subaccount.google_review_link,
+      reviewThreshold: subaccount.review_threshold,
+      thankYouMessage: subaccount.thank_you_message,
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error('Error fetching subaccount data:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Internal Server Error:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -56,33 +48,31 @@ export async function POST(
 ) {
   try {
     const subaccountId = params.subaccountId;
-    const body = await request.json();
-    
-    const { rating, subject, comment, customerName, customerEmail, customerPhone } = body;
+    const {
+      rating,
+      subject,
+      comment,
+      customerName,
+      customerEmail,
+      customerPhone,
+    } = await request.json();
 
-    // Validate required fields
-    if (!rating || !subject || !comment || !customerName || !customerEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Check if subaccount exists and is active for reviews
+    // Validate subaccount
     const { data: subaccount, error: subaccountError } = await supabaseAdmin
       .from('subaccounts')
-      .select(`
-        id, 
-        status,
-        subaccount_settings ( enable_reviews )
-      `)
+      .select('id, is_active')
       .eq('id', subaccountId)
       .single();
 
     if (subaccountError || !subaccount) {
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
-    
-    const reviewsEnabled = subaccount.subaccount_settings?.[0]?.enable_reviews ?? true;
-    if (subaccount.status !== 'active' || !reviewsEnabled) {
-      return NextResponse.json({ error: 'This business is not currently accepting reviews.' }, { status: 403 });
+
+    if (!subaccount.is_active) {
+      return NextResponse.json(
+        { error: 'This business is not currently accepting reviews.' },
+        { status: 403 }
+      );
     }
 
     // Check if customer already submitted a review
@@ -94,37 +84,43 @@ export async function POST(
       .single();
 
     if (existingReview) {
-      return NextResponse.json({ error: 'You have already submitted a review for this business' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'You have already submitted a review for this business' },
+        { status: 400 }
+      );
     }
 
-    // Create the review
-    const { data: review, error: reviewError } = await supabaseAdmin
+    // Create the new review
+    const { data: newReview, error: createError } = await supabaseAdmin
       .from('reviews')
       .insert({
+        subaccount_id: subaccountId,
         rating,
         subject,
         comment,
         customer_name: customerName,
         customer_email: customerEmail,
-        customer_phone: customerPhone || null,
-        subaccount_id: subaccountId,
-        status: 'PENDING'
+        customer_phone: customerPhone,
+        status: 'PENDING', // Default status
       })
       .select('id')
       .single();
 
-    if (reviewError) {
-      console.error('Error creating review:', reviewError);
-      return NextResponse.json({ error: 'Failed to submit review' }, { status: 500 });
+    if (createError) {
+      console.error('Error creating review:', createError);
+      return NextResponse.json(
+        { error: 'Failed to create review' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Review submitted successfully',
-      reviewId: review.id 
-    });
+    return NextResponse.json({ reviewId: newReview.id }, { status: 201 });
   } catch (error) {
-    console.error('Error creating review:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Internal Server Error:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
+'''
