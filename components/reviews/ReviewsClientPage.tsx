@@ -78,7 +78,6 @@ export function ReviewsClientPage({ subaccountId, initialReviews, subaccountName
           <h1 className="text-3xl font-bold tracking-tight">Reviews</h1>
           <p className="text-muted-foreground">Manage customer feedback and review settings</p>
         </div>
-        <ReviewLinkSharer subaccountId={subaccountId} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

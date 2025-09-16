@@ -1,117 +1,76 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, CheckCircle, MessageSquare, Building } from 'lucide-react';
+import { Star, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
-interface SubaccountSettings {
-  businessName: string;
-  logoUrl: string | null;
-  googleReviewLink: string | null;
-  reviewThreshold: number;
-  primaryColor: string;
-  thankYouMessage: string | null;
-}
-
-export function ReviewForm({ subaccountId, isPreview = false }: { subaccountId: string; isPreview?: boolean }) {
+export function ReviewForm({ subaccountData }) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+  const [reviewData, setReviewData] = useState({
     subject: '',
-    comment: '',
+    body: '',
+    email: '',
+    phone: '',
+    name: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [settings, setSettings] = useState<SubaccountSettings | null>(null);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  // Fetch subaccount settings
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await fetch(`/api/subaccounts/${subaccountId}/settings`);
-        if (response.ok) {
-          const data = await response.json();
-          setSettings(data.settings);
-        } else {
-          console.error('Failed to fetch settings');
-        }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-      } finally {
-        setIsLoadingSettings(false);
-      }
-    };
-
-    fetchSettings();
-  }, [subaccountId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRatingClick = (selectedRating: number) => {
+    setRating(selectedRating);
     
-    if (rating === 0) {
-      toast.error('Please select a rating');
-      return;
+    const threshold = subaccountData?.reviewThreshold || 4;
+    
+    if (selectedRating >= threshold) {
+      if (subaccountData?.googleReviewLink) {
+        window.location.assign(subaccountData.googleReviewLink);
+      } else {
+        const businessName = encodeURIComponent(subaccountData?.businessName || 'business');
+        window.location.assign(`https://www.google.com/search?q=${businessName}+reviews`);
+      }
+    } else {
+      setShowForm(true);
     }
+  };
 
-    if (!formData.name || !formData.comment) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/subaccounts/${subaccountId}/reviews`, {
+      const response = await fetch(`/api/reviews/${subaccountData.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           rating,
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject,
-          comment: formData.comment,
+          subject: reviewData.subject,
+          comment: reviewData.body,
+          customerName: reviewData.name,
+          customerEmail: reviewData.email,
+          customerPhone: reviewData.phone,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to submit review');
-      }
-
       const result = await response.json();
-      
-      const threshold = settings?.reviewThreshold || 4;
-      
-      if (rating >= threshold) {
-        // Positive review - immediately redirect to Google or external platform
-        toast.success('Thank you for your positive feedback! Redirecting to leave a public review...');
-        if (!isPreview && settings?.googleReviewLink) {
-          // Immediate redirect for positive reviews
-          window.location.assign(settings.googleReviewLink);
-          return; // Exit early since we're redirecting
-        } else if (!isPreview) {
-          // Fallback if no Google URL is configured
-          const businessName = settings?.businessName || 'this business';
-          window.location.assign(`https://www.google.com/search?q=${encodeURIComponent(businessName)}+review`);
-          return; // Exit early since we're redirecting
-        }
+
+      if (response.ok) {
+        setSubmitted(true);
+        toast.success('Thank you for your feedback!');
       } else {
-        // Negative review - captured privately
-        toast.success(settings?.thankYouMessage || 'Thank you for your feedback! We value your input and will use it to improve.');
+        toast.error(result.error || 'Failed to submit review');
       }
-      
-      setIsSubmitted(true);
     } catch (error) {
-      console.error('Review submission error:', error);
+      console.error('Error submitting review:', error);
       toast.error('Failed to submit review. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -119,34 +78,39 @@ export function ReviewForm({ subaccountId, isPreview = false }: { subaccountId: 
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setReviewData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (isSubmitted) {
+  if (!subaccountData.isActive) {
     return (
-      <div className={isPreview ? "p-8" : "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4"}>
-        <Card className="w-full max-w-md border-0 shadow-2xl">
-          <CardContent className="text-center p-8">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
-            <p className="text-gray-600 mb-4">
-              {rating >= (settings?.reviewThreshold || 4) 
-                ? "We're thrilled you had a great experience! Your public review helps other customers discover us."
-                : settings?.thankYouMessage || "We appreciate your honest feedback and will use it to improve our service."
-              }
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="pt-6">
+            <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Reviews Temporarily Unavailable</h2>
+            <p className="text-gray-600">
+              We're sorry, but {subaccountData.businessName} is not currently accepting reviews through this platform. 
+              Please check back later or contact the business directly.
             </p>
-            <div className="flex justify-center">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-5 w-5 ${
-                    i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="pt-6">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Thank You!</h2>
+            <p className="text-gray-600 mb-4">
+              {subaccountData.thankYouMessage}
+            </p>
+            <p className="text-sm text-gray-500">
+              We appreciate you taking the time to share your experience with {subaccountData.businessName}.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -154,158 +118,183 @@ export function ReviewForm({ subaccountId, isPreview = false }: { subaccountId: 
   }
 
   return (
-    <div className={isPreview ? "p-4" : "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4"}>
-      <div className="w-full max-w-2xl">
-        {!isPreview && (
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              {settings?.logoUrl ? (
-                <img 
-                  src={settings.logoUrl} 
-                  alt={settings.businessName || 'Business Logo'} 
-                  className="h-12 w-12 object-contain rounded-lg"
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+          <CardHeader className="text-center">
+            {subaccountData.logoUrl && (
+              <div className="mx-auto mb-4 w-16 h-16 relative">
+                <Image
+                  src={subaccountData.logoUrl}
+                  alt={`${subaccountData.businessName} logo`}
+                  fill
+                  className="object-contain rounded-lg"
                 />
-              ) : (
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Building className="h-6 w-6 text-white" />
-                </div>
-              )}
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {settings?.businessName || 'Grow Easy'}
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Share Your Experience</h1>
-            <p className="text-gray-600">
-              Your feedback drives our success and helps us deliver exceptional service
-            </p>
-          </div>
-        )}
-
-        <Card className="border-0 shadow-2xl">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-xl text-gray-900">How was your experience?</CardTitle>
+              </div>
+            )}
+            <CardTitle className="text-2xl font-bold text-gray-900">
+              {subaccountData.businessName}
+            </CardTitle>
             <CardDescription className="text-gray-600">
-              Please rate your overall experience and share your thoughts
+              How was your experience with us?
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Rating Section */}
-              <div className="text-center space-y-2">
-                <Label className="text-sm font-medium">Overall Rating</Label>
-                <div className="flex justify-center space-x-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
+            {!showForm ? (
+              <div className="text-center">
+                <p className="text-gray-700 mb-6">Please rate your experience:</p>
+                <div className="flex justify-center space-x-2 mb-6">
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <button
-                      key={i}
-                      type="button"
-                      className="focus:outline-none"
-                      onMouseEnter={() => setHoveredRating(i + 1)}
+                      key={star}
+                      onClick={() => handleRatingClick(star)}
+                      onMouseEnter={() => setHoveredRating(star)}
                       onMouseLeave={() => setHoveredRating(0)}
-                      onClick={() => setRating(i + 1)}
+                      className="transition-transform hover:scale-110"
                     >
                       <Star
-                        className={`h-8 w-8 transition-colors ${
-                          i < (hoveredRating || rating)
-                            ? 'text-yellow-400 fill-current'
-                            : 'text-gray-300 hover:text-yellow-200'
+                        className={`h-12 w-12 ${
+                          star <= (hoveredRating || rating)
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
                         }`}
                       />
                     </button>
                   ))}
                 </div>
-                <div className="text-sm text-gray-500 mt-2">
-                  {rating > 0 && (
-                    <span>
-                      {rating === 1 && "Poor"}
-                      {rating === 2 && "Fair"}
-                      {rating === 3 && "Good"}
-                      {rating === 4 && "Very Good"}
-                      {rating === 5 && "Excellent"}
-                    </span>
-                  )}
-                </div>
+                <p className="text-sm text-gray-500">
+                  Click on a star to rate your experience
+                </p>
               </div>
+            ) : (
+              <form onSubmit={handleSubmitReview} className="space-y-4">
+                <div className="text-center mb-4">
+                  <div className="flex justify-center space-x-1 mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-6 w-6 ${
+                          star <= rating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    We'd love to hear more about your experience
+                  </p>
+                </div>
 
-              {/* Form Fields */}
-              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
+                  <Label htmlFor="name">Your Name *</Label>
                   <Input
                     id="name"
                     type="text"
                     placeholder="Your full name"
-                    value={formData.name}
+                    value={reviewData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     required
                     className="h-11"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="subject">Subject *</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com (optional)"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    id="subject"
+                    type="text"
+                    placeholder="Brief summary of your experience"
+                    value={reviewData.subject}
+                    onChange={(e) => handleInputChange('subject', e.target.value)}
+                    required
                     className="h-11"
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="subject">Review Title</Label>
-                <Input
-                  id="subject"
-                  type="text"
-                  placeholder="Brief title for your review (optional)"
-                  value={formData.subject}
-                  onChange={(e) => handleInputChange('subject', e.target.value)}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="comment">Your Feedback *</Label>
-                <Textarea
-                  id="comment"
-                  placeholder="Please share details about your experience..."
-                  value={formData.comment}
-                  onChange={(e) => handleInputChange('comment', e.target.value)}
-                  required
-                  className="min-h-[120px] resize-none"
-                />
-              </div>
-
-              {/* Smart Review Notice */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <MessageSquare className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="text-blue-800 font-medium mb-1">Smart Review System</p>
-                    <p className="text-blue-700">
-                      Positive reviews ({settings?.reviewThreshold || 4}+ stars) will be shared publicly to help other customers.
-                      Lower ratings will be kept private so we can address your concerns directly.
-                    </p>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="body">Details *</Label>
+                  <Textarea
+                    id="body"
+                    placeholder="Please tell us more about your experience..."
+                    value={reviewData.body}
+                    onChange={(e) => handleInputChange('body', e.target.value)}
+                    required
+                    rows={4}
+                    className="resize-none"
+                  />
                 </div>
-              </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                disabled={isSubmitting || isPreview}
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Review'}
-              </Button>
-            </form>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={reviewData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    required
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone (Optional)</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Your phone number"
+                    value={reviewData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowForm(false)}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
 
-        {!isPreview && (
-          <div className="text-center mt-6 text-xs text-gray-500">
-            <p>Powered by Grow Easy - All-in-One CRM, Sales & Marketing Platform</p>
-          </div>
+        {rating >= (subaccountData?.reviewThreshold || 4) && !showForm && (
+          <Card className="mt-4 border-0 shadow-lg bg-green-50/80 backdrop-blur-sm">
+            <CardContent className="pt-4">
+              <div className="text-center">
+                <p className="text-green-700 font-medium mb-2">
+                  Thank you for the great rating!
+                </p>
+                <p className="text-sm text-green-600 mb-3">
+                  Would you mind sharing your experience on Google?
+                </p>
+                {subaccountData?.googleReviewLink && (
+                  <Button
+                    onClick={() => window.location.assign(subaccountData.googleReviewLink!)}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Leave Google Review
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
