@@ -1,54 +1,63 @@
 'use client';
 
 import { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, Copy, Share2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 interface ReviewLinkSharerProps {
-  slug: string; // The component now directly accepts the subaccount slug
+  reviewUrl: string;
 }
 
-export function ReviewLinkSharer({ slug }: ReviewLinkSharerProps) {
-  const [isCopied, setIsCopied] = useState(false);
+export function ReviewLinkSharer({ reviewUrl }: ReviewLinkSharerProps) {
+  const [hasCopied, setHasCopied] = useState(false);
 
-  // If the slug isn't available yet, don't render the component
-  if (!slug) {
-    return null;
-  }
-
-  // Construct the full URL on the client side
-  const reviewUrl = `${window.location.origin}/reviews/${slug}`;
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(reviewUrl).then(() => {
-      setIsCopied(true);
-      toast.success('Review link copied to clipboard!');
-      setTimeout(() => setIsCopied(false), 2000); // Reset icon after 2 seconds
-    });
+  const handleCopy = () => {
+    if (!reviewUrl) {
+      toast.error('Review link is not available yet.');
+      return;
+    }
+    navigator.clipboard.writeText(reviewUrl);
+    setHasCopied(true);
+    toast.success('Review link copied to clipboard!');
+    setTimeout(() => setHasCopied(false), 2000);
   };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline">
-          <Share2 className="mr-2 h-4 w-4" />
-          Share Link
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Share this link with your customers to collect reviews.</p>
-          <div className="flex items-center space-x-2">
-            <Input value={reviewUrl} readOnly className="flex-1 h-9" />
-            <Button size="icon" onClick={copyToClipboard} className="h-9 w-9">
-              {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button>Share Link</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Share Your Review Link</DialogTitle>
+          <DialogDescription>
+            Share this link with your customers to start collecting reviews.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center space-x-2">
+          <div className="grid flex-1 gap-2">
+            <Label htmlFor="link" className="sr-only">
+              Link
+            </Label>
+            <Input id="link" value={reviewUrl || 'Generating link...'} readOnly />
           </div>
+          <Button onClick={handleCopy} size="sm" className="px-3">
+            <span className="sr-only">Copy</span>
+            {hasCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }

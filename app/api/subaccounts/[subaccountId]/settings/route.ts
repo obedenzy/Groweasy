@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { getCurrentUser, hasSubaccountAccess } from '@/lib/session-stub';
 
-// GET request handler to fetch combined settings
+// Corrected GET handler
 export async function GET(
   request: NextRequest,
   { params }: { params: { subaccountId: string } }
@@ -22,6 +22,7 @@ export async function GET(
       .single();
 
     if (error || !data) {
+      console.error('Settings fetch error:', error);
       return NextResponse.json({ error: 'Subaccount not found' }, { status: 404 });
     }
 
@@ -29,18 +30,26 @@ export async function GET(
       ? data.subaccount_settings[0]
       : {};
 
-    // Combine data into a unified, consistent structure
     const responseData = {
-      id: data.id,
-      name: data.name,
-      logo: data.logo,
-      slug: data.slug,
-      ...settings,
-      is_active: settings.is_active !== false, // Default to true if null/undefined
-      review_threshold: settings.review_threshold ?? 4,
+      businessName: data.name,
+      logoUrl: data.logo,
+      reviewUrl: `${process.env.NEXT_PUBLIC_APP_URL}/reviews/${data.slug}`,
+      businessType: settings.business_type,
+      address: settings.address,
+      city: settings.city,
+      state: settings.state,
+      zipCode: settings.zip_code,
+      country: settings.country,
+      enable_reviews: settings.enable_reviews !== false, // Use the correct column name
+      googleReviewLink: settings.google_review_link,
+      reviewThreshold: settings.review_threshold ?? 4,
+      thankYouMessage: settings.thank_you_message,
+      primaryColor: settings.primary_color || '#3B82F6',
+      timezone: settings.timezone || 'UTC',
+      emailNotifications: settings.email_notifications !== false,
     };
 
-    return NextResponse.json(responseData);
+    return NextResponse.json({ settings: responseData });
 
   } catch (error) {
     console.error('Settings fetch error:', error);
@@ -48,7 +57,7 @@ export async function GET(
   }
 }
 
-// PATCH request handler to update settings
+// Corrected PATCH handler
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { subaccountId: string } }
@@ -65,12 +74,11 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { logo, name, ...settingsFields } = body;
+    const { businessName, logoUrl, ...settingsFields } = body;
 
-    // 1. Update the 'subaccounts' table (name and logo)
     const subaccountUpdate: { [key: string]: any } = {};
-    if (name !== undefined) subaccountUpdate.name = name;
-    if (logo !== undefined) subaccountUpdate.logo = logo;
+    if (businessName !== undefined) subaccountUpdate.name = businessName;
+    if (logoUrl !== undefined) subaccountUpdate.logo = logoUrl;
 
     if (Object.keys(subaccountUpdate).length > 0) {
       const { error: subaccountError } = await supabaseAdmin
@@ -80,22 +88,33 @@ export async function PATCH(
 
       if (subaccountError) {
         console.error('Subaccount update error:', subaccountError);
-        return NextResponse.json({ error: 'Failed to save subaccount details' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to save business information' }, { status: 500 });
       }
     }
 
-    // 2. Upsert the 'subaccount_settings' table
-    if (Object.keys(settingsFields).length > 0) {
+    const settingsUpdatePayload: { [key: string]: any } = {};
+    // Map frontend field names to the correct database column names
+    const keyMap: { [key: string]: string } = {
+      enable_reviews: 'enable_reviews', // Correct mapping
+      googleReviewLink: 'google_review_link',
+      reviewThreshold: 'review_threshold',
+      thankYouMessage: 'thank_you_message',
+      primaryColor: 'primary_color',
+      emailNotifications: 'email_notifications',
+      businessType: 'business_type',
+    };
+
+    for (const key in settingsFields) {
+        const dbKey = keyMap[key] || key;
+        settingsUpdatePayload[dbKey] = settingsFields[key];
+    }
+
+    if (Object.keys(settingsUpdatePayload).length > 0) {
       const { error: settingsError } = await supabaseAdmin
         .from('subaccount_settings')
         .upsert(
-          {
-            subaccount_id: params.subaccountId,
-            ...settingsFields,
-          },
-          {
-            onConflict: 'subaccount_id',
-          }
+          { subaccount_id: params.subaccountId, ...settingsUpdatePayload },
+          { onConflict: 'subaccount_id' }
         );
 
       if (settingsError) {
@@ -104,28 +123,7 @@ export async function PATCH(
       }
     }
 
-    // 3. Refetch and return the complete, updated data
-    const { data: finalData, error: finalError } = await supabaseAdmin
-      .from('subaccounts')
-      .select('id, name, logo, slug, subaccount_settings(*)')
-      .eq('id', params.subaccountId)
-      .single();
-      
-    if (finalError) {
-        return NextResponse.json({ error: 'Failed to refetch data' }, { status: 500 });
-    }
-
-    const finalSettings = Array.isArray(finalData.subaccount_settings) && finalData.subaccount_settings.length > 0
-      ? finalData.subaccount_settings[0]
-      : {};
-
-    return NextResponse.json({
-      success: true,
-      settings: {
-          ...finalData,
-          ...finalSettings
-      }
-    });
+    return NextResponse.json({ success: true, message: 'Settings saved successfully' });
 
   } catch (error) {
     console.error('Settings update error:', error);

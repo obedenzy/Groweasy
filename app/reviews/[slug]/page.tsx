@@ -11,7 +11,7 @@ export default async function ReviewPage({ params }: { params: { slug: string } 
     notFound();
   }
 
-  // Correctly fetch data, including is_active from the settings table
+  // Fetch subaccount data along with its settings
   const { data: subaccount, error } = await supabaseAdmin
     .from('subaccounts')
     .select(`
@@ -19,7 +19,7 @@ export default async function ReviewPage({ params }: { params: { slug: string } 
       name,
       logo,
       subaccount_settings (
-        is_active,
+        enable_reviews,
         google_review_link,
         review_threshold,
         thank_you_message
@@ -33,31 +33,31 @@ export default async function ReviewPage({ params }: { params: { slug: string } 
     notFound();
   }
 
-  // Safely extract settings, providing defaults
+  // Correctly determine the settings, defaulting to enabled if not explicitly configured
   const settings = Array.isArray(subaccount.subaccount_settings) && subaccount.subaccount_settings.length > 0
     ? subaccount.subaccount_settings[0]
-    : { is_active: false }; // Default to inactive if no settings exist
+    : { enable_reviews: true }; // Default to true if no settings exist
 
-  // Use the is_active flag from the settings to disable the page
-  if (!settings.is_active) {
+  // Use the 'enable_reviews' flag to disable the page
+  if (settings.enable_reviews === false) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center p-8 bg-white shadow-md rounded-lg">
-          <h1 className="text-2xl font-bold mb-4">Business Not Found</h1>
+          <h1 className="text-2xl font-bold mb-4">Reviews Unavailable</h1>
           <p className="text-gray-600">
-            The review link you're looking for doesn't exist or has been disabled.
+            This business is not currently accepting reviews through this platform.
           </p>
         </div>
       </div>
     );
   }
 
-  // Construct the props object for the ReviewForm component
+  // Construct the props for the ReviewForm component
   const subaccountData = {
     id: subaccount.id,
     businessName: subaccount.name,
     logoUrl: subaccount.logo,
-    isActive: settings.is_active,
+    isActive: settings.enable_reviews,
     googleReviewLink: settings.google_review_link,
     reviewThreshold: settings.review_threshold ?? 4,
     thankYouMessage: settings.thank_you_message || 'Thank you for your feedback!',
