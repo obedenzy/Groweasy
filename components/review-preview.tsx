@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { ReviewForm } from '@/components/reviews/ReviewForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QrCode } from '@/components/reviews/QrCode';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SettingsData {
   businessName: string;
@@ -21,7 +23,12 @@ interface ReviewPreviewProps {
 }
 
 export function ReviewPreview({ settings, subaccountId }: ReviewPreviewProps) {
-  const reviewUrl = `https://app.carepulse.co/reviews/${subaccountId}`;
+  const [reviewUrl, setReviewUrl] = useState('');
+
+  useEffect(() => {
+    // Ensure this runs only on the client where `window` is available
+    setReviewUrl(`${window.location.origin}/reviews/${subaccountId}`);
+  }, [subaccountId]);
 
   const subaccountData = {
     id: subaccountId,
@@ -71,15 +78,21 @@ export function ReviewPreview({ settings, subaccountId }: ReviewPreviewProps) {
             </div>
           </TabsContent>
           <TabsContent value="public-url">
-            <div className="p-4 border rounded-lg bg-gray-50 mt-4">
+            <div className="p-4 border rounded-lg bg-gray-50 mt-4 space-y-2">
                 <p className="text-sm text-muted-foreground">Your public review URL is:</p>
-                <a href={reviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
-                    {reviewUrl}
-                </a>
+                {reviewUrl ? (
+                  <a href={reviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+                      {reviewUrl}
+                  </a>
+                ) : (
+                  <Skeleton className="h-6 w-full" />
+                )}
             </div>
           </TabsContent>
           <TabsContent value="qr-code">
-             <QrCode reviewUrl={reviewUrl} />
+            <div className="flex justify-center items-center">
+              {reviewUrl ? <QrCode reviewUrl={reviewUrl} /> : <Skeleton className="h-[398px] w-full" />}
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>
